@@ -5,13 +5,17 @@ import TodoList from "./components/TodoList.js";
 import CheckAllAndRemaining from "./components/CheckAllAndRemaining.js";
 import TodoFilters from "./components/TodoFilters.js";
 import ClearCompleted from "./components/ClearCompleted.js";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 function App() {
   let [todos, setTodos] = useState([]);
+  let [filterTodo, setFilterTodo] = useState(todos);
   useEffect(() => {
     fetch("http://localhost:5000/todos")
       .then((res) => res.json())
-      .then((data) => setTodos(data));
+      .then((todos) => {
+        setTodos(todos);
+        setFilterTodo(todos);
+      });
   }, []);
   //client
   let addTodo = (todo) => {
@@ -53,6 +57,44 @@ function App() {
       body: JSON.stringify(todo),
     });
   };
+  let remaintinCount = todos.filter((t) => !t.completed).length;
+  let checkAll = () => {
+    todos.forEach((t) => {
+      t.completed = true;
+      updateTodo(t);
+    });
+    setTodos((prev) =>
+      prev.map((t) => {
+        return {
+          ...t,
+          completed: true,
+        };
+      })
+    );
+  };
+  let clearComplete = () => {
+    setTodos((prev) => prev.filter((t) => !t.completed));
+    todos.forEach((t) => {
+      if (t.completed) {
+        deleteTodo(t.id);
+      }
+    });
+  };
+  let filterBy = useCallback(
+    (filter) => {
+      if (filter === "All") {
+        setFilterTodo(todos);
+      }
+      if (filter === "Active") {
+        setFilterTodo(todos.filter((atodo) => !atodo.completed));
+      }
+      if (filter === "Completed") {
+        setFilterTodo(todos.filter((ctodo) => ctodo.completed));
+      }
+    },
+    [todos]
+  );
+
   return (
     <div className="todo-app-container">
       <div className="todo-app">
@@ -61,17 +103,19 @@ function App() {
         <TodoForm addTodo={addTodo} />
 
         <TodoList
-          todos={todos}
+          todos={filterTodo}
           deleteTodo={deleteTodo}
           updateTodo={updateTodo}
         />
 
-        <CheckAllAndRemaining />
+        <CheckAllAndRemaining
+          remainingCount={remaintinCount}
+          checkAll={checkAll}
+        />
 
         <div className="other-buttons-container">
-          <TodoFilters />
-
-          <ClearCompleted />
+          <TodoFilters filterBy={filterBy} />
+          <ClearCompleted clearComplete={clearComplete} />
         </div>
       </div>
     </div>
